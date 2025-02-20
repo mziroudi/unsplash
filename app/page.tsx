@@ -4,6 +4,22 @@ import { useState } from "react";
 import { createApi } from "unsplash-js";
 import { TypeAnimation } from "react-type-animation";
 import { saveAs } from "file-saver";
+import Image from "next/image";
+
+interface UnsplashImage {
+  id: string;
+  urls: {
+    regular: string;
+    full: string;
+  };
+  alt_description: string;
+  user: {
+    name: string;
+  };
+  links: {
+    html: string;
+  };
+}
 
 const unsplash = createApi({
   accessKey: process.env.NEXT_PUBLIC_UNSPLASH_ACCESS_KEY || "",
@@ -11,9 +27,9 @@ const unsplash = createApi({
 
 export default function Home() {
   const [query, setQuery] = useState("");
-  const [images, setImages] = useState([]);
+  const [images, setImages] = useState<UnsplashImage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<any>(null);
+  const [selectedImage, setSelectedImage] = useState<UnsplashImage | null>(null);
 
   const searchPhotos = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +44,22 @@ export default function Home() {
       });
 
       if (result.response) {
-        setImages(result.response.results);
+        // Type assertion to ensure results match UnsplashImage interface
+        const typedResults = result.response.results.map(photo => ({
+          ...photo,
+          alt_description: photo.alt_description || '', // Convert nullable string to string
+          urls: {
+            regular: photo.urls.regular,
+            full: photo.urls.full
+          },
+          user: {
+            name: photo.user.name
+          },
+          links: {
+            html: photo.links.html
+          }
+        }));
+        setImages(typedResults);
       }
     } catch (error) {
       console.error("Error fetching images:", error);
@@ -131,9 +162,11 @@ export default function Home() {
               className="relative group overflow-hidden rounded-lg cursor-pointer"
               onClick={() => setSelectedImage(image)}
             >
-              <img
+              <Image
                 src={image.urls.regular}
-                alt={image.alt_description}
+                alt={image.alt_description || ""}
+                width={400}
+                height={256}
                 className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110"
               />
               <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
@@ -164,9 +197,11 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-              <img
+              <Image
                 src={selectedImage.urls.full}
-                alt={selectedImage.alt_description}
+                alt={selectedImage.alt_description || ""}
+                width={1920}
+                height={1080}
                 className="w-full h-auto max-h-[80vh] object-contain rounded-lg shadow-2xl"
               />
               <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center bg-black/50 p-4 rounded-lg backdrop-blur-sm">
