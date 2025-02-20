@@ -203,6 +203,7 @@ export default function Home() {
                 width={1920}
                 height={1080}
                 className="w-full h-auto max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                priority
               />
               <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center bg-black/50 p-4 rounded-lg backdrop-blur-sm">
                 <div className="text-white">
