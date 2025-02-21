@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createApi } from "unsplash-js";
 import { TypeAnimation } from "react-type-animation";
 import { saveAs } from "file-saver";
@@ -30,12 +30,54 @@ export default function Home() {
   const [images, setImages] = useState<UnsplashImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedImage, setSelectedImage] = useState<UnsplashImage | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadMorePhotos = async () => {
+    if (loading || !query || !hasMore) return;
+
+    setLoading(true);
+    try {
+      const result = await unsplash.search.getPhotos({
+        query,
+        page,
+        perPage: 12,
+      });
+
+      if (result.response) {
+        const typedResults = result.response.results.map(photo => ({
+          ...photo,
+          alt_description: photo.alt_description || '',
+          urls: {
+            regular: photo.urls.regular,
+            full: photo.urls.full
+          },
+          user: {
+            name: photo.user.name
+          },
+          links: {
+            html: photo.links.html
+          }
+        }));
+        setImages(prev => [...prev, ...typedResults]);
+        setHasMore(typedResults.length > 0);
+        setPage(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error("Error fetching images:", error);
+    }
+    setLoading(false);
+  };
 
   const searchPhotos = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query) return;
 
+    setImages([]);
+    setPage(1);
+    setHasMore(true);
     setLoading(true);
+
     try {
       const result = await unsplash.search.getPhotos({
         query,
@@ -44,10 +86,9 @@ export default function Home() {
       });
 
       if (result.response) {
-        // Type assertion to ensure results match UnsplashImage interface
         const typedResults = result.response.results.map(photo => ({
           ...photo,
-          alt_description: photo.alt_description || '', // Convert nullable string to string
+          alt_description: photo.alt_description || '',
           urls: {
             regular: photo.urls.regular,
             full: photo.urls.full
@@ -60,6 +101,8 @@ export default function Home() {
           }
         }));
         setImages(typedResults);
+        setHasMore(typedResults.length > 0);
+        setPage(2);
       }
     } catch (error) {
       console.error("Error fetching images:", error);
@@ -67,14 +110,26 @@ export default function Home() {
     setLoading(false);
   };
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop
+          === document.documentElement.offsetHeight) {
+        loadMorePhotos();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [page, loading, query, hasMore]);
+
   return (
     <div className="min-h-screen bg-black text-white p-8 relative overflow-hidden flex items-center justify-center">
       <div className="max-w-4xl w-full relative z-10">
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold mb-3 text-white">
+          <h1 className="text-6xl font-bold mb-3 text-white hover:text-gray-100 transition-colors duration-300">
             Unsplash Gallery
           </h1>
-          <div className="w-32 h-px mx-auto bg-gradient-to-r from-transparent via-gray-500 to-transparent mb-4"></div>
+          <div className="w-48 h-0.5 mx-auto bg-gradient-to-r from-transparent via-purple-500 to-transparent mb-4 glow-line"></div>
           <p className="text-gray-400 text-lg mb-8">
             Discover stunning high-resolution photos
           </p>
